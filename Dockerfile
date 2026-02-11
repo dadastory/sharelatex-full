@@ -14,11 +14,9 @@ RUN apt-get update && apt-get upgrade -y  \
     && rm -rf /var/lib/apt/lists/*
 
 # download chinese fonts
-RUN git clone https://github.com/Haixing-Hu/latex-chinese-fonts \
-    /usr/share/fonts/opentype/latex-chinese-fonts -b master \
-
-# update cache
-RUN fc-cache -fv
+RUN git clone -b master https://github.com/Haixing-Hu/latex-chinese-fonts \
+    /usr/share/fonts/opentype/latex-chinese-fonts && \
+    fc-cache -fv
 
 # update tlmgr itself
 RUN wget "https://mirror.ctan.org/systems/texlive/tlnet/update-tlmgr-latest.sh" \
