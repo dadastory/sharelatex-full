@@ -13,6 +13,7 @@ Current Features include:
 - support for `svg`-images through the addition of inkscape
 - support for lilipond
 - shell-escape enabled by default
+- support chinese fonts
 
 Have a look at the [Dockerfile](./Dockerfile) to find out more.
 
@@ -29,7 +30,7 @@ Example:
 ``` yml
 services:
     sharelatex:
-        image: tuetenk0pp/sharelatex-full
+        image: dadastory/sharelatex-full
 ```
 
 ### Docker Compose
