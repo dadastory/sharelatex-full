@@ -14,7 +14,7 @@ RUN apt-get update && apt-get upgrade -y  \
     && rm -rf /var/lib/apt/lists/*
 
 # download chinese fonts
-RUN git clone -b master https://github.com/Haixing-Hu/latex-chinese-fonts \
+RUN git clone -b master https://gh.llkk.cc/https://github.com/Haixing-Hu/latex-chinese-fonts \
     /usr/share/fonts/opentype/latex-chinese-fonts && \
     fc-cache -fv
 
