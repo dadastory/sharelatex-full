@@ -19,12 +19,12 @@ RUN git clone -b master https://github.com/Haixing-Hu/latex-chinese-fonts \
     fc-cache -fv
 
 # update tlmgr itself
-RUN wget "https://mirror.ctan.org/systems/texlive/tlnet/update-tlmgr-latest.sh" \
+RUN wget "https://mirrors.tuna.tsinghua.edu.cn/CTAN/systems/texlive/tlnet/update-tlmgr-latest.sh" \
     && sh update-tlmgr-latest.sh \
     && tlmgr --version
 
 # change repository
-RUN tlmgr option repository https://mirrors.tuna.tsinghua.edu.cn/CTAN/systems/texlive/tlnet/
+RUN tlmgr option repository https://mirrors.tuna.tsinghua.edu.cn/CTAN/systems/texlive/tlnet
 
 # enable tlmgr to install ctex
 RUN tlmgr update texlive-scripts 
