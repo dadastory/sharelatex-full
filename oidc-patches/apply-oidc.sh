@@ -32,6 +32,17 @@ done
 mkdir -p /tmp/oidc-install
 cd /tmp/oidc-install
 npm install --no-save --no-audit --no-fund "${NPM_REGISTRY_ARGS[@]}" "$OIDC_PKG"
+
+# Make the OIDC `state` parameter URL-safe. The bundled uid() builds state via
+# base64, whose alphabet includes '+' and '/'. In a redirect query string '+'
+# decodes to a space, so the returned state no longer matches the one stored in
+# the session and login fails with "Invalid authorization request state".
+# base64url uses '-'/'_' instead and survives the round-trip.
+OIDC_UTILS=/tmp/oidc-install/node_modules/@govtechsg/passport-openidconnect/lib/utils.js
+grep -q '.toString("base64")' "$OIDC_UTILS"
+sed -i 's/\.toString("base64")/.toString("base64url")/' "$OIDC_UTILS"
+grep -q '.toString("base64url")' "$OIDC_UTILS"
+
 cp -rn /tmp/oidc-install/node_modules/@govtechsg "$OVERLEAF_ROOT/node_modules/"
 rm -rf /tmp/oidc-install
 

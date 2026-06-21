@@ -1,5 +1,5 @@
---- a/services/web/app/src/Features/Authentication/AuthenticationController.mjs	2026-06-20 15:43:23.788621805 +0000
-+++ b/services/web/app/src/Features/Authentication/AuthenticationController.mjs	2026-06-20 15:46:42.616057116 +0000
+--- a/services/web/app/src/Features/Authentication/AuthenticationController.mjs
++++ b/services/web/app/src/Features/Authentication/AuthenticationController.mjs
 @@ -3,6 +3,8 @@
  import OError from '@overleaf/o-error'
  import LoginRateLimiter from '../Security/LoginRateLimiter.mjs'
@@ -9,7 +9,7 @@
  import Metrics from '@overleaf/metrics'
  import logger from '@overleaf/logger'
  import querystring from 'node:querystring'
-@@ -112,6 +114,135 @@
+@@ -112,6 +114,157 @@
      cb(null, user)
    },
  
@@ -104,16 +104,38 @@
 +      .exec()
 +      .then(user => {
 +        if (!user) {
-+          UserCreator.promises
-+            .createNewUser({
-+              holdingAccount: false,
-+              email: profile.emails[0].value,
-+              first_name: profile.name?.givenName || '',
-+              last_name: profile.name?.familyName || profile.username,
-+              oidcIdentifier:
-+                AuthenticationController.extractOidcIdFromProfile(profile),
++          // No account matches this OIDC identity yet. If an account already
++          // exists with the same email (e.g. a local account), link the OIDC
++          // identity to it instead of creating a duplicate (avoids E11000).
++          User.findOne({ email: profile.emails[0].value })
++            .exec()
++            .then(existingUser => {
++              if (existingUser) {
++                existingUser.oidcIdentifier =
++                  AuthenticationController.extractOidcIdFromProfile(profile)
++                existingUser.first_name =
++                  profile.name?.givenName || existingUser.first_name
++                existingUser.last_name =
++                  profile.name?.familyName ||
++                  profile.username ||
++                  existingUser.last_name
++                return existingUser
++                  .save()
++                  .then(() => callback(null, existingUser))
++                  .catch(error => callback(error))
++              }
++              return UserCreator.promises
++                .createNewUser({
++                  holdingAccount: false,
++                  email: profile.emails[0].value,
++                  first_name: profile.name?.givenName || '',
++                  last_name: profile.name?.familyName || profile.username,
++                  oidcIdentifier:
++                    AuthenticationController.extractOidcIdFromProfile(profile),
++                })
++                .then(user => callback(null, user))
++                .catch(error => callback(error))
 +            })
-+            .then(user => callback(null, user))
 +            .catch(error => callback(error))
 +        } else {
 +          user.first_name = profile.name?.givenName || ''
