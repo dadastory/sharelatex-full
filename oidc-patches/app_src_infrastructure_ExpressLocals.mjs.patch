@@ -1,0 +1,17 @@
+--- a/services/web/app/src/infrastructure/ExpressLocals.mjs	2026-06-20 15:43:23.709772351 +0000
++++ b/services/web/app/src/infrastructure/ExpressLocals.mjs	2026-06-20 15:46:42.618784681 +0000
+@@ -99,6 +99,14 @@
+     next()
+   })
+ 
++  webRouter.use(function (req, res, next) {
++    res.locals.oidc_login_enabled =
++      process.env.OVERLEAF_OIDC_ISSUER !== undefined
++    res.locals.oidc_login_button_text =
++      process.env.OVERLEAF_LOGIN_OIDC_BUTTON || 'Log in with SSO'
++    next()
++  })
++
+   function addSetContentDisposition(req, res, next) {
+     res.setContentDisposition = function (type, { filename }) {
+       res.setHeader(

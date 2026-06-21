@@ -1,0 +1,10 @@
+--- a/services/web/app/src/models/User.mjs	2026-06-20 15:43:23.680397789 +0000
++++ b/services/web/app/src/models/User.mjs	2026-06-20 15:46:42.614493690 +0000
+@@ -37,6 +37,7 @@
+       default: '',
+       maxlength: MAX_NAME_LENGTH,
+     },
++    oidcIdentifier: { type: String },
+     role: { type: String, default: '' },
+     institution: { type: String, default: '' },
+     hashedPassword: String,

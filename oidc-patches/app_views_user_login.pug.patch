@@ -1,0 +1,9 @@
+--- a/services/web/app/views/user/login.pug	2026-06-20 15:43:23.651771132 +0000
++++ b/services/web/app/views/user/login.pug	2026-06-20 15:46:42.619700461 +0000
+@@ -46,3 +46,6 @@
+ 								if login_support_text
+ 									hr
+ 									p.text-center !{login_support_text}
++
++							if oidc_login_enabled
++								a.btn.btn-primary.mt-2(href='/login/oidc' role='button') #{oidc_login_button_text}

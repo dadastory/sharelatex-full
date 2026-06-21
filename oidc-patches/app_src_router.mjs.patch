@@ -1,0 +1,17 @@
+--- a/services/web/app/src/router.mjs	2026-06-20 15:43:23.737393556 +0000
++++ b/services/web/app/src/router.mjs	2026-06-20 15:46:42.618276102 +0000
+@@ -216,6 +216,14 @@
+   webRouter.get('/login', UserPagesController.loginPage)
+   AuthenticationController.addEndpointToLoginWhitelist('/login')
+ 
++  webRouter.get('/login/oidc', AuthenticationController.oidcLogin)
++  AuthenticationController.addEndpointToLoginWhitelist('/login/oidc')
++  webRouter.get(
++    '/login/oidc/callback',
++    AuthenticationController.oidcLoginCallback
++  )
++  AuthenticationController.addEndpointToLoginWhitelist('/login/oidc/callback')
++
+   webRouter.post(
+     '/login',
+     RateLimiterMiddleware.rateLimit(overleafLoginRateLimiter), // rate limit IP (20 / 60s)

@@ -1,0 +1,147 @@
+--- a/services/web/app/src/Features/Authentication/AuthenticationController.mjs	2026-06-20 15:43:23.788621805 +0000
++++ b/services/web/app/src/Features/Authentication/AuthenticationController.mjs	2026-06-20 15:46:42.616057116 +0000
+@@ -3,6 +3,8 @@
+ import OError from '@overleaf/o-error'
+ import LoginRateLimiter from '../Security/LoginRateLimiter.mjs'
+ import UserUpdater from '../User/UserUpdater.mjs'
++import { User } from '../../models/User.mjs'
++import UserCreator from '../User/UserCreator.mjs'
+ import Metrics from '@overleaf/metrics'
+ import logger from '@overleaf/logger'
+ import querystring from 'node:querystring'
+@@ -112,6 +114,135 @@
+     cb(null, user)
+   },
+ 
++  extractOidcIdFromProfile(profile) {
++    const method = process.env.OVERLEAF_OIDC_MATCHING || 'id'
++    switch (method) {
++      case 'username':
++        return profile.username
++      case 'id':
++      default:
++        return profile.id
++    }
++  },
++
++  ensureOidcLoginEnabled(res) {
++    if (process.env.OVERLEAF_OIDC_ISSUER === undefined) {
++      res.status(403).json({
++        message: {
++          type: 'error',
++          text: 'OIDC login is disabled',
++        },
++      })
++      return false
++    }
++    return true
++  },
++
++  createPassportCallback(method, req, res, next) {
++    return async function (err, user, info) {
++      if (err) {
++        return next(err)
++      }
++      if (!info) {
++        info = {}
++      }
++      if (user) {
++        AuthenticationController.setAuditInfo(req, { method })
++        try {
++          await Modules.promises.hooks.fire(
++            'saasLogin',
++            { email: user.email },
++            req
++          )
++          await AuthenticationController.promises.finishLogin(user, req, res)
++        } catch (err) {
++          return next(err)
++        }
++      } else {
++        if (info.redir != null) {
++          return res.json({ redir: info.redir })
++        } else {
++          res.status(info.status || 200)
++          delete info.status
++          const body = { message: info }
++          const { errorReason } = info
++          if (errorReason) {
++            body.errorReason = errorReason
++            delete info.errorReason
++          }
++          return res.json(body)
++        }
++      }
++    }
++  },
++
++  oidcLogin(req, res, next) {
++    if (!AuthenticationController.ensureOidcLoginEnabled(res)) {
++      return
++    }
++    return passport.authenticate('oidc')(req, res, next)
++  },
++
++  oidcLoginCallback(req, res, next) {
++    if (!AuthenticationController.ensureOidcLoginEnabled(res)) {
++      return
++    }
++    return passport.authenticate(
++      'oidc',
++      {
++        failureRedirect: '/login',
++        failureMessage: true,
++      },
++      AuthenticationController.createPassportCallback('OIDC login', req, res, next)
++    )(req, res, next)
++  },
++
++  verifyOpenIDConnect(issuer, profile, callback) {
++    User.findOne({
++      oidcIdentifier:
++        AuthenticationController.extractOidcIdFromProfile(profile),
++    })
++      .exec()
++      .then(user => {
++        if (!user) {
++          UserCreator.promises
++            .createNewUser({
++              holdingAccount: false,
++              email: profile.emails[0].value,
++              first_name: profile.name?.givenName || '',
++              last_name: profile.name?.familyName || profile.username,
++              oidcIdentifier:
++                AuthenticationController.extractOidcIdFromProfile(profile),
++            })
++            .then(user => callback(null, user))
++            .catch(error => callback(error))
++        } else {
++          user.first_name = profile.name?.givenName || ''
++          user.last_name = profile.name?.familyName || profile.username
++          if (user.email !== profile.emails[0].value) {
++            user.email = profile.emails[0].value
++            const reversedHostname = user.email
++              .split('@')[1]
++              .split('')
++              .reverse()
++              .join('')
++            user.emails = [
++              {
++                email: user.email,
++                createdAt: new Date(),
++                reversedHostname,
++              },
++            ]
++          }
++          user
++            .save()
++            .then(() => callback(null, user))
++            .catch(error => callback(error))
++        }
++      })
++      .catch(error => callback(error))
++  },
++
+   passportLogin(req, res, next) {
+     // This function is middleware which wraps the passport.authenticate middleware,
+     // so we can send back our custom `{message: {text: "", type: ""}}` responses on failure,
