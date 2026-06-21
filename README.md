@@ -70,79 +70,78 @@ container (e.g. in the Toolkit's `config/variables.env` or the compose service's
 | `OVERLEAF_OIDC_MATCHING` | no | `id` | `id` or `username` — which profile field maps to the local account |
 | `OVERLEAF_LOGIN_OIDC_BUTTON` | no | `Log in with SSO` | login button label |
 
-### Casdoor 配置（中文）
+### Casdoor setup
 
-以 Casdoor 作为 OIDC 身份提供方的完整配置步骤。
+Full configuration when using Casdoor as the OIDC identity provider.
 
-**1. 在 Casdoor 新建应用**
+**1. Create an application in Casdoor**
 
-登录 Casdoor 管理后台 → **应用（Applications）** → **添加**，填写：
+In the Casdoor admin console, go to **Applications** → **Add**, and fill in:
 
-| 字段 | 填写内容 |
+| Field | Value |
 |---|---|
-| 名称 / 显示名称 | 例如 `overleaf` |
-| 重定向 URL（Redirect URLs） | `https://<你的overleaf域名>/login/oidc/callback` |
-| 授权类型（Grant types） | 勾选 `Authorization Code` |
-| Token 格式 | `JWT`（默认即可） |
-| 关联组织（Organization） | 选择用户所在组织 |
+| Name / Display name | e.g. `overleaf` |
+| Redirect URLs | `https://<your-overleaf>/login/oidc/callback` |
+| Grant types | enable `Authorization Code` |
+| Token format | `JWT` (default) |
+| Organization | the organization your users belong to |
 
-保存后在应用详情页获取 **Client ID** 与 **Client Secret**。
+After saving, copy the **Client ID** and **Client Secret** from the application page.
 
-> 重定向 URL 必须与 `OVERLEAF_OIDC_CALLBACK_URL` **完全一致**（协议、域名、路径），否则 Casdoor 会拒绝回调。
+> The redirect URL must match `OVERLEAF_OIDC_CALLBACK_URL` **exactly** (scheme, host, path), otherwise Casdoor rejects the callback.
 
-**2. 确认 Casdoor 的 OIDC 端点**
+**2. Confirm the Casdoor OIDC endpoints**
 
-打开 discovery 文档，以实际返回为准（替换 `<casdoor>` 为你的域名）：
+Open the discovery document and trust whatever it returns (replace `<casdoor>` with your host):
 
 ```
 https://<casdoor>/.well-known/openid-configuration
 ```
 
-其中 `issuer` / `authorization_endpoint` / `token_endpoint` / `userinfo_endpoint` 即下面要填的值。Casdoor 标准端点通常为：
+Its `issuer` / `authorization_endpoint` / `token_endpoint` / `userinfo_endpoint` are the values used below. Casdoor's standard endpoints are usually:
 
-| 端点 | 路径 |
+| Endpoint | Path |
 |---|---|
 | issuer | `https://<casdoor>` |
 | authorization | `https://<casdoor>/login/oauth/authorize` |
 | token | `https://<casdoor>/api/login/oauth/access_token` |
 | userinfo | `https://<casdoor>/api/userinfo` |
 
-**3. 在 Overleaf 设置环境变量**
+**3. Set the environment variables on Overleaf**
 
-加到 Overleaf Toolkit 的 `config/variables.env`，或 compose 中 `sharelatex` 服务的 `environment`：
+Add these to the Toolkit's `config/variables.env`, or the compose `sharelatex` service's `environment`:
 
 ``` env
 OVERLEAF_OIDC_ISSUER=https://<casdoor>
 OVERLEAF_OIDC_AUTHORIZATION_URL=https://<casdoor>/login/oauth/authorize
 OVERLEAF_OIDC_TOKEN_URL=https://<casdoor>/api/login/oauth/access_token
 OVERLEAF_OIDC_USERINFO_URL=https://<casdoor>/api/userinfo
-OVERLEAF_OIDC_CALLBACK_URL=https://<你的overleaf域名>/login/oidc/callback
-OVERLEAF_OIDC_CLIENT_ID=<Casdoor 应用的 Client ID>
-OVERLEAF_OIDC_CLIENT_SECRET=<Casdoor 应用的 Client Secret>
+OVERLEAF_OIDC_CALLBACK_URL=https://<your-overleaf>/login/oidc/callback
+OVERLEAF_OIDC_CLIENT_ID=<Client ID from the Casdoor app>
+OVERLEAF_OIDC_CLIENT_SECRET=<Client Secret from the Casdoor app>
 OVERLEAF_OIDC_SCOPE=openid profile email
-OVERLEAF_LOGIN_OIDC_BUTTON=使用 SSO 登录
+OVERLEAF_LOGIN_OIDC_BUTTON=Log in with SSO
 ```
 
-设置 `OVERLEAF_OIDC_ISSUER` 后即自动启用 OIDC，登录页出现 SSO 按钮。重启 `sharelatex` 容器生效。
+Setting `OVERLEAF_OIDC_ISSUER` enables OIDC and shows the SSO button on the login page. Restart the `sharelatex` container to apply.
 
-**4. 验证**
+**4. Verify**
 
-访问登录页 → 点 "使用 SSO 登录" → 跳转 Casdoor 登录 → 跳回 Overleaf。首次 SSO 登录会按 Casdoor 返回的 email/姓名自动创建本地用户，并以 `oidcIdentifier` 关联。
+Open the login page → click "Log in with SSO" → authenticate in Casdoor → get redirected back to Overleaf. The first SSO login creates a local user from the email and name returned by Casdoor, matched via `oidcIdentifier`.
 
-**常见问题**
+**Troubleshooting**
 
-| 现象 | 原因 |
+| Symptom | Cause |
 |---|---|
-| 回调报 `redirect_uri` 不匹配 | Casdoor 应用的 Redirect URL 与 `OVERLEAF_OIDC_CALLBACK_URL` 不一致 |
-| 跳回后报错 / 拿不到用户 | scope 缺 `email`/`profile`，或 userinfo 端点路径不对 |
-| 点 SSO 按钮提示 disabled | `OVERLEAF_OIDC_ISSUER` 未设置，或容器未重启 |
-| HTTPS 证书错误 | Casdoor 使用自签证书，Overleaf 容器不信任；生产建议用受信任证书 |
+| Callback reports `redirect_uri` mismatch | Casdoor app Redirect URL differs from `OVERLEAF_OIDC_CALLBACK_URL` |
+| Error / no user after redirect | scope missing `email`/`profile`, or wrong userinfo endpoint |
+| SSO button says disabled | `OVERLEAF_OIDC_ISSUER` not set, or container not restarted |
+| HTTPS certificate error | Casdoor uses a self-signed cert the Overleaf container does not trust; use a trusted cert in production |
 
 > [!NOTE]
 > The first SSO login creates a local user from the profile's email and name,
 > matched/created by `oidcIdentifier`. Keep at least one local admin account
 > (do not disable local login) until SSO is verified.
-> 在 SSO 验证通过前，请务必保留一个本地管理员账号、不要关闭本地登录，否则配置错误会把自己锁在外面。
 
 ## Building
 
